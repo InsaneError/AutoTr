@@ -31,6 +31,10 @@ class InsAutoTr(loader.Module):
         self.target_lang = self.db.get("InsAutoTr", "lang", "en")
         self.enabled = self.db.get("InsAutoTr", "enabled", False)
 
+        if hasattr(self, 'handler_registered'):
+            return
+        self.handler_registered = True
+
         @self.client.on(events.NewMessage(outgoing=True))
         async def handler(event):
             if not self.enabled or not event.message.text:
@@ -56,6 +60,9 @@ class InsAutoTr(loader.Module):
                     await event.message.edit(translated)
             except:
                 pass
+
+    async def on_unload(self):
+        self.enabled = False
 
     @loader.command()
     async def inst(self, message):
