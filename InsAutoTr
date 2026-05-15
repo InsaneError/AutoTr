@@ -1,0 +1,54 @@
+import requests
+from telethon import events
+from .. import loader, utils
+
+@loader.tds
+class InsAutoTr(loader.Module):
+    """Автоперевод исходящих сообщений @SheoMod"""
+    strings = {'name': 'InsAutoTr'}
+
+    async def client_ready(self, client, db):
+        self.client = client
+        self.db = db
+        self.target_lang = self.db.get("InsAutoTr", "lang", "en")
+        self.enabled = self.db.get("InsAutoTr", "enabled", False)
+
+        @self.client.on(events.NewMessage(outgoing=True))
+        async def handler(event):
+            if not self.enabled or not event.message.text:
+                return
+            text = event.message.text
+            if text.startswith('.'):
+                return
+
+            try:
+                url = "https://translate.yandex.net/api/v1/tr.json/translate"
+                params = {
+                    "id": "e18e142b.0a0d4d12.f1e21c7a-0-0-0-0",
+                    "srv": "tr-url",
+                    "lang": self.target_lang,
+                    "text": text
+                }
+                r = requests.get(url, params=params, timeout=5)
+                translated = r.json()["text"][0]
+
+                if translated != text:
+                    await event.message.edit(translated)
+            except:
+                pass
+
+    @loader.command()
+    async def inst(self, message):
+        """[lang] - вкл/выкл автоперевод или сменить язык"""
+        args = utils.get_args_raw(message)
+        if args:
+            self.target_lang = args
+            self.db.set("InsAutoTr", "lang", args)
+            self.enabled = True
+            self.db.set("InsAutoTr", "enabled", True)
+            await utils.answer(message, f"Язык: {args}, перевод ON")
+        else:
+            self.enabled = not self.enabled
+            self.db.set("InsAutoTr", "enabled", self.enabled)
+            state = "ON" if self.enabled else "OFF"
+            await utils.answer(message, f"Автоперевод {state} -> {self.target_lang}")
