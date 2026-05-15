@@ -1,4 +1,4 @@
-import requests
+import aiohttp
 from telethon import events
 from .. import loader, utils
 
@@ -30,11 +30,7 @@ class InsAutoTr(loader.Module):
         self.db = db
         self.target_lang = self.db.get("InsAutoTr", "lang", "en")
         self.enabled = self.db.get("InsAutoTr", "enabled", False)
-        self._session = requests.Session()
-        self._session.headers.update({
-            "User-Agent": "Mozilla/5.0",
-            "Accept-Encoding": "gzip, deflate"
-        })
+        self._session = aiohttp.ClientSession()
 
         if hasattr(self, 'handler_registered'):
             return
@@ -57,9 +53,9 @@ class InsAutoTr(loader.Module):
                     "dt": "t",
                     "q": text
                 }
-                r = self._session.get(url, params=params, timeout=3)
-                data = r.json()
-                translated = ''.join([part[0] for part in data[0] if part[0]])
+                async with self._session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=3)) as r:
+                    data = await r.json()
+                    translated = ''.join([part[0] for part in data[0] if part[0]])
 
                 if translated and translated != text:
                     await event.message.edit(translated)
@@ -69,7 +65,7 @@ class InsAutoTr(loader.Module):
     async def on_unload(self):
         self.enabled = False
         if hasattr(self, '_session'):
-            self._session.close()
+            await self._session.close()
 
     @loader.command()
     async def inst(self, message):
