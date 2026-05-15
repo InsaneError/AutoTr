@@ -30,6 +30,11 @@ class InsAutoTr(loader.Module):
         self.db = db
         self.target_lang = self.db.get("InsAutoTr", "lang", "en")
         self.enabled = self.db.get("InsAutoTr", "enabled", False)
+        self._session = requests.Session()
+        self._session.headers.update({
+            "User-Agent": "Mozilla/5.0",
+            "Accept-Encoding": "gzip, deflate"
+        })
 
         if hasattr(self, 'handler_registered'):
             return
@@ -52,7 +57,7 @@ class InsAutoTr(loader.Module):
                     "dt": "t",
                     "q": text
                 }
-                r = requests.get(url, params=params, timeout=5)
+                r = self._session.get(url, params=params, timeout=3)
                 data = r.json()
                 translated = ''.join([part[0] for part in data[0] if part[0]])
 
@@ -63,6 +68,8 @@ class InsAutoTr(loader.Module):
 
     async def on_unload(self):
         self.enabled = False
+        if hasattr(self, '_session'):
+            self._session.close()
 
     @loader.command()
     async def inst(self, message):
